@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+
+# Paths and variables
+CONFIG_DIR="$HOME/.config/ml4w-dotfiles-settings"
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LIB_FILE="$APP_DIR/lib/utils.sh"
+DEMO_FILE="$APP_DIR/demo/settings.json"
+
+DRY_RUN=0
+PROFILE=""
+DIRECT_ID=""
+DIRECT_VALUE=""
+CREATE_PROFILE=""
+
+# Source utils
+if [[ -f "$LIB_FILE" ]]; then
+    source "$LIB_FILE"
+else
+    echo "Error: Cannot find lib/utils.sh at $LIB_FILE"
+    exit 1
+fi
+
+# Parse Arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --help)
+            echo "Usage: ml4w-dotfiles-settings [OPTIONS] [PROFILE]"
+            echo "Options:"
+            echo "  --test <profile>                 Start script in test mode (no files modified)"
+            echo "  --create <profile>               Create a profile with the demo setup"
+            echo "  --id <id> --value <value>        Set a value directly for an ID"
+            echo "  --help                           Show this help message"
+            exit 0
+            ;;
+        --test)
+            DRY_RUN=1
+            PROFILE="$2"
+            shift 2
+            ;;
+        --create)
+            CREATE_PROFILE="$2"
+            shift 2
+            ;;
+        --id)
+            DIRECT_ID="$2"
+            shift 2
+            ;;
+        --value)
+            DIRECT_VALUE="$2"
+            shift 2
+            ;;
+        *)
+            if [[ -z "$PROFILE" ]]; then
+                PROFILE="$1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+# Check dependencies
+if ! command -v gum &> /dev/null || ! command -v jq &> /dev/null; then
+    echo "Error: 'gum' and 'jq' are required but not installed."
+    exit 1
+fi
+
+# Ensure base config folder exists
+mkdir -p "$CONFIG_DIR"
+
+# Handle --create
+if [[ -n "$CREATE_PROFILE" ]]; then
+    mkdir -p "$CONFIG_DIR/$CREATE_PROFILE"
+    cp "$DEMO_FILE" "$CONFIG_DIR/$CREATE_PROFILE/settings.json"
+    echo "Profile '$CREATE_PROFILE' successfully created."
+    exit 0
+fi
+
+# Validate Profile
+if [[ -z "$PROFILE" ]]; then
+    echo "Error: Profile not specified. Use --help for usage."
+    exit 1
+fi
+
+PROFILE_DIR="$CONFIG_DIR/$PROFILE"
+SETTINGS_FILE="$PROFILE_DIR/settings.json"
+
+if [[ ! -d "$PROFILE_DIR" || ! -f "$SETTINGS_FILE" ]]; then
+    echo "Error: Profile not found or settings.json missing at $PROFILE_DIR"
+    exit 1
+fi
+
+# Handle Direct ID/Value Insertion
+if [[ -n "$DIRECT_ID" && -n "$DIRECT_VALUE" ]]; then
+    item_json=$(jq -r --arg id "$DIRECT_ID" '.[] | select(.id == $id)' "$SETTINGS_FILE")
+    if [[ -z "$item_json" ]]; then
+        echo "Error: ID '$DIRECT_ID' not found in settings.json"
+        exit 1
+    fi
+    file=$(echo "$item_json" | jq -r '.file')
+    mode=$(echo "$item_json" | jq -r '.mode')
+    match=$(echo "$item_json" | jq -r '.match // ""')
+    checkpoint=$(echo "$item_json" | jq -r '.checkpoint // ""')
+    apply_setting "$file" "$mode" "$match" "$checkpoint" "$DIRECT_VALUE"
+    echo "Successfully updated $DIRECT_ID."
+    exit 0
+fi
+
+# Main Gum UI Loop
+while true; do
+    clear
+    gum style --foreground 212 --border double --border-foreground 212 --padding "0 1" " ml4w Dotfiles Settings - Profile: $PROFILE "
+    
+    # Build Menu Options
+    options=$(jq -r '.[].name' "$SETTINGS_FILE")
+    
+    # Render Gum choose
+    selected_name=$(echo -e "$options\nExit" | gum choose --header "Select a setting to configure:" --limit 1)
+
+    # Break loop if exit
+    if [[ "$selected_name" == "Exit" || -z "$selected_name" ]]; then
+        break
+    fi
+
+    # Fetch Data for selected option
+    item_json=$(jq -r --arg name "$selected_name" '.[] | select(.name == $name)' "$SETTINGS_FILE")
+
+    name=$(echo "$item_json" | jq -r '.name')
+    instructions=$(echo "$item_json" | jq -r '.instructions')
+    type=$(echo "$item_json" | jq -r '.type')
+    mode=$(echo "$item_json" | jq -r '.mode')
+    file=$(echo "$item_json" | jq -r '.file')
+    match=$(echo "$item_json" | jq -r '.match // ""')
+    checkpoint=$(echo "$item_json" | jq -r '.checkpoint // ""')
+    default=$(echo "$item_json" | jq -r '.default // ""')
+
+    # Standardize checkpoint mode
+    if [[ -n "$checkpoint" && "$mode" == "replace" ]]; then
+        mode="replace with checkpoint"
+    fi
+
+    current_val=$(get_current_value "$file" "$mode" "$match" "$checkpoint" "$default")
+
+    # Display Setting Info
+    echo ""
+    gum style --foreground 82 "▶ Setting: $name"
+    gum style --foreground 250 "$instructions"
+    gum style --foreground 240 "Mode: $mode | Type: $type"
+    gum style --foreground 240 "Target: $file"
+    gum style --foreground 39 "Current value string:"
+    gum style --foreground 230 --padding "0 2" "$current_val"
+    echo ""
+
+    # Prompt user based on type
+    new_value=""
+    if [[ "$type" == "toggle" ]]; then
+        toggle_ans=$(gum choose "Yes" "No")
+        if [[ "$toggle_ans" == "Yes" ]]; then
+            new_value="true"
+        elif [[ "$toggle_ans" == "No" ]]; then
+            new_value="false"
+        fi
+    elif [[ "$type" == "textfield" ]]; then
+        new_value=$(gum input --placeholder "Default: $default")
+    elif [[ "$type" == "choose" ]]; then
+        # Parse choices into Gum
+        new_value=$(echo "$item_json" | jq -r '.options[]' | gum choose)
+    fi
+
+    # Apply changes if the user provided input
+    if [[ -n "$new_value" ]]; then
+        apply_setting "$file" "$mode" "$match" "$checkpoint" "$new_value"
+        if [[ $DRY_RUN -eq 0 ]]; then
+            gum style --foreground 82 "✓ Successfully set to: $new_value"
+        fi
+        sleep 2
+    fi
+done
