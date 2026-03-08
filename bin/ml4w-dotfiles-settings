@@ -89,9 +89,11 @@ if [[ ! -d "$PROFILE_DIR" || ! -f "$SETTINGS_FILE" ]]; then
     exit 1
 fi
 
-# Handle Direct ID/Value Insertion
+# Handle Direct ID/Value Insertion (Updated for nested JSON and checkpoints)
 if [[ -n "$DIRECT_ID" && -n "$DIRECT_VALUE" ]]; then
-    item_json=$(jq -r --arg id "$DIRECT_ID" '.[] | select(.id == $id)' "$SETTINGS_FILE")
+    # Flatten settings arrays from all groups to find the specific ID
+    item_json=$(jq -r --arg id "$DIRECT_ID" 'map(.settings) | flatten | .[] | select(.id == $id)' "$SETTINGS_FILE")
+    
     if [[ -z "$item_json" ]]; then
         echo "Error: ID '$DIRECT_ID' not found in settings.json"
         exit 1
@@ -100,78 +102,101 @@ if [[ -n "$DIRECT_ID" && -n "$DIRECT_VALUE" ]]; then
     mode=$(echo "$item_json" | jq -r '.mode')
     match=$(echo "$item_json" | jq -r '.match // ""')
     checkpoint=$(echo "$item_json" | jq -r '.checkpoint // ""')
+    
+    # Standardize checkpoint mode for direct injection
+    if [[ -n "$checkpoint" && "$mode" == "replace" ]]; then
+        mode="replace with checkpoint"
+    fi
+
     apply_setting "$file" "$mode" "$match" "$checkpoint" "$DIRECT_VALUE"
     echo "Successfully updated $DIRECT_ID."
     exit 0
 fi
 
-# Main Gum UI Loop
+# Main Gum UI Loop (Groups)
 while true; do
     clear
     gum style --foreground 212 --border double --border-foreground 212 --padding "0 1" " ml4w Dotfiles Settings - Profile: $PROFILE "
     
-    # Build Menu Options
-    options=$(jq -r '.[].name' "$SETTINGS_FILE")
+    # Extract available groups
+    groups=$(jq -r '.[].group' "$SETTINGS_FILE")
     
-    # Render Gum choose
-    selected_name=$(echo -e "$options\nExit" | gum choose --header "Select a setting to configure:" --limit 1)
+    # Choose Group (with Exit option)
+    selected_group=$(echo -e "$groups\nExit" | gum choose --header "Select a configuration group:" --limit 1)
 
-    # Break loop if exit
-    if [[ "$selected_name" == "Exit" || -z "$selected_name" ]]; then
+    # Break outer loop if Exit is selected
+    if [[ "$selected_group" == "Exit" || -z "$selected_group" ]]; then
         break
     fi
 
-    # Fetch Data for selected option
-    item_json=$(jq -r --arg name "$selected_name" '.[] | select(.name == $name)' "$SETTINGS_FILE")
+    # Sub-menu Loop (Settings within the selected group)
+    while true; do
+        clear
+        gum style --foreground 212 --border double --border-foreground 212 --padding "0 1" " Profile: $PROFILE > $selected_group "
+        
+        # Get settings names for the specific group
+        settings_names=$(jq -r --arg grp "$selected_group" '.[] | select(.group == $grp) | .settings[].name' "$SETTINGS_FILE")
+        
+        # Render Gum choose for settings (with Back option)
+        selected_name=$(echo -e "$settings_names\nBack" | gum choose --header "Select a setting to configure:" --limit 1)
 
-    name=$(echo "$item_json" | jq -r '.name')
-    instructions=$(echo "$item_json" | jq -r '.instructions')
-    type=$(echo "$item_json" | jq -r '.type')
-    mode=$(echo "$item_json" | jq -r '.mode')
-    file=$(echo "$item_json" | jq -r '.file')
-    match=$(echo "$item_json" | jq -r '.match // ""')
-    checkpoint=$(echo "$item_json" | jq -r '.checkpoint // ""')
-    default=$(echo "$item_json" | jq -r '.default // ""')
-
-    # Standardize checkpoint mode
-    if [[ -n "$checkpoint" && "$mode" == "replace" ]]; then
-        mode="replace with checkpoint"
-    fi
-
-    current_val=$(get_current_value "$file" "$mode" "$match" "$checkpoint" "$default")
-
-    # Display Setting Info
-    echo ""
-    gum style --foreground 82 "▶ Setting: $name"
-    gum style --foreground 250 "$instructions"
-    gum style --foreground 240 "Mode: $mode | Type: $type"
-    gum style --foreground 240 "Target: $file"
-    gum style --foreground 39 "Current value string:"
-    gum style --foreground 230 --padding "0 2" "$current_val"
-    echo ""
-
-    # Prompt user based on type
-    new_value=""
-    if [[ "$type" == "toggle" ]]; then
-        toggle_ans=$(gum choose "Yes" "No")
-        if [[ "$toggle_ans" == "Yes" ]]; then
-            new_value="true"
-        elif [[ "$toggle_ans" == "No" ]]; then
-            new_value="false"
+        # Break inner loop to go back to Group menu
+        if [[ "$selected_name" == "Back" || -z "$selected_name" ]]; then
+            break
         fi
-    elif [[ "$type" == "textfield" ]]; then
-        new_value=$(gum input --placeholder "Default: $default")
-    elif [[ "$type" == "choose" ]]; then
-        # Parse choices into Gum
-        new_value=$(echo "$item_json" | jq -r '.options[]' | gum choose)
-    fi
 
-    # Apply changes if the user provided input
-    if [[ -n "$new_value" ]]; then
-        apply_setting "$file" "$mode" "$match" "$checkpoint" "$new_value"
-        if [[ $DRY_RUN -eq 0 ]]; then
-            gum style --foreground 82 "✓ Successfully set to: $new_value"
+        # Fetch JSON object for the selected setting
+        item_json=$(jq -r --arg grp "$selected_group" --arg name "$selected_name" '.[] | select(.group == $grp) | .settings[] | select(.name == $name)' "$SETTINGS_FILE")
+
+        name=$(echo "$item_json" | jq -r '.name')
+        instructions=$(echo "$item_json" | jq -r '.instructions')
+        type=$(echo "$item_json" | jq -r '.type')
+        mode=$(echo "$item_json" | jq -r '.mode')
+        file=$(echo "$item_json" | jq -r '.file')
+        match=$(echo "$item_json" | jq -r '.match // ""')
+        checkpoint=$(echo "$item_json" | jq -r '.checkpoint // ""')
+        default=$(echo "$item_json" | jq -r '.default // ""')
+
+        # Standardize checkpoint mode
+        if [[ -n "$checkpoint" && "$mode" == "replace" ]]; then
+            mode="replace with checkpoint"
         fi
-        sleep 2
-    fi
+
+        current_val=$(get_current_value "$file" "$mode" "$match" "$checkpoint" "$default")
+
+        # Display Setting Info
+        echo ""
+        gum style --foreground 82 "▶ Setting: $name"
+        gum style --foreground 250 "$instructions"
+        gum style --foreground 240 "Mode: $mode | Type: $type"
+        gum style --foreground 240 "Target: $file"
+        gum style --foreground 39 "Current value string:"
+        gum style --foreground 230 --padding "0 2" "$current_val"
+        echo ""
+
+        # Prompt user based on type
+        new_value=""
+        if [[ "$type" == "toggle" ]]; then
+            toggle_ans=$(gum choose "Yes" "No")
+            if [[ "$toggle_ans" == "Yes" ]]; then
+                new_value="true"
+            elif [[ "$toggle_ans" == "No" ]]; then
+                new_value="false"
+            fi
+        elif [[ "$type" == "textfield" ]]; then
+            new_value=$(gum input --placeholder "Default: $default")
+        elif [[ "$type" == "choose" ]]; then
+            # Parse choices into Gum
+            new_value=$(echo "$item_json" | jq -r '.options[]' | gum choose)
+        fi
+
+        # Apply changes if the user provided input
+        if [[ -n "$new_value" ]]; then
+            apply_setting "$file" "$mode" "$match" "$checkpoint" "$new_value"
+            if [[ $DRY_RUN -eq 0 ]]; then
+                gum style --foreground 82 "✓ Successfully set to: $new_value"
+            fi
+            sleep 1.5
+        fi
+    done
 done

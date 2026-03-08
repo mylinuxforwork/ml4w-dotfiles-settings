@@ -22,7 +22,7 @@ get_current_value() {
     local val=""
     if [[ "$mode" == "overwrite" ]]; then
         val=$(cat "$file")
-    elif [[ "$mode" == "replace" ]]; then
+    elif [[ "$mode" == "replace" && -z "$checkpoint" ]]; then
         # awk will find the first line matching the regex
         val=$(awk -v m="$match" '$0 ~ m { print $0; exit }' "$file")
     elif [[ "$mode" == "replace with checkpoint" || -n "$checkpoint" ]]; then
@@ -59,7 +59,7 @@ apply_setting() {
         else
             echo "$value" > "$file"
         fi
-    elif [[ "$mode" == "replace" ]]; then
+    elif [[ "$mode" == "replace" && -z "$checkpoint" ]]; then
         if [[ $DRY_RUN -eq 1 ]]; then
             echo -e "\n[TEST MODE] Replacing regex '$match' with '$replacement' in $file\n"
         else

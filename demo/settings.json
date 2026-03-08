@@ -1,42 +1,50 @@
 [
-  {
-    "name": "Toggle Dock",
-    "id": "toggle_dock",
-    "instructions": "Do you want to enable or disable the dock?",
-    "file": "~/.config/ml4w/settings/dock",
-    "type": "toggle",
-    "mode": "overwrite",
-    "default": "true"
-  },
-  {
-    "name": "Terminal Font Size",
-    "id": "term_font_size",
-    "instructions": "Enter the font size for your terminal:",
-    "file": "~/.config/alacritty/alacritty.toml",
-    "type": "textfield",
-    "mode": "replace",
-    "match": "size = .*",
-    "default": "12"
-  },
-  {
-    "name": "Terminal Font Color",
-    "id": "term_font_color",
-    "instructions": "Enter the font color for your terminal:",
-    "file": "~/.config/alacritty/alacritty.toml",
-    "type": "textfield",
-    "mode": "replace",
-    "match": "fontcolor = .*",
-    "default": "#FFFFFF",
-    "checkpoint": "#Comment"
-  },
-  {
-    "name": "Select Theme",
-    "id": "theme_select",
-    "instructions": "Choose your preferred system theme:",
-    "file": "~/.config/ml4w/settings/theme",
-    "type": "choose",
-    "mode": "overwrite",
-    "options": ["Light", "Dark", "Dracula"],
-    "default": "Dark"
-  }
+    {
+        "group":"Group1",
+        "description":"Description",
+        "settings":[{
+            "name": "Toggle Dock",
+            "id": "toggle_dock",
+            "instructions": "Do you want to enable or disable the dock?",
+            "file": "~/.config/ml4w/settings/dock",
+            "type": "toggle",
+            "mode": "overwrite",
+            "default": "true"
+        }]
+    },
+    {
+        "group":"Group2",
+        "description":"Description",
+        "settings":[{
+            "name": "Terminal Font Size",
+            "id": "term_font_size",
+            "instructions": "Enter the font size for your terminal:",
+            "file": "~/.config/alacritty/alacritty.toml",
+            "type": "textfield",
+            "mode": "replace",
+            "match": "size = .*",
+            "default": "12"
+        },
+        {
+            "name": "Terminal Font Color",
+            "id": "term_font_color",
+            "instructions": "Enter the font color for your terminal:",
+            "file": "~/.config/alacritty/alacritty.toml",
+            "type": "textfield",
+            "mode": "replace",
+            "match": "fontcolor = .*",
+            "default": "#FFFFFF",
+            "checkpoint": "#Comment"
+        },
+        {
+            "name": "Select Theme",
+            "id": "theme_select",
+            "instructions": "Choose your preferred system theme:",
+            "file": "~/.config/ml4w/settings/theme",
+            "type": "choose",
+            "mode": "overwrite",
+            "options": ["Light", "Dark", "Dracula"],
+            "default": "Dark"
+        }]
+    }
 ]
