@@ -117,29 +117,67 @@ if [[ "$ACTION" == "set" || "$ACTION" == "get" ]]; then
         exit 1
     fi
     
+    type=$(echo "$item_json" | jq -r '.type // ""')
     file=$(echo "$item_json" | jq -r '.file')
     mode=$(echo "$item_json" | jq -r '.mode')
     match=$(echo "$item_json" | jq -r '.match // ""')
     checkpoint=$(echo "$item_json" | jq -r '.checkpoint // ""')
     default=$(echo "$item_json" | jq -r '.default // ""')
+    post_command=$(echo "$item_json" | jq -r '.post_command // ""')
+    true_value=$(echo "$item_json" | jq -r 'if has("true_value") then .true_value else "true" end')
+    false_value=$(echo "$item_json" | jq -r 'if has("false_value") then .false_value else "false" end')
     
     # Standardize checkpoint mode for direct operations
     if [[ -n "$checkpoint" && "$mode" == "replace" ]]; then
         mode="replace with checkpoint"
     fi
 
+    expanded_file=$(expand_path "$file")
+
     if [[ "$ACTION" == "set" ]]; then
         if [[ -z "$DIRECT_VALUE" ]]; then
             echo "Error: --value is required for --set."
             exit 1
         fi
+
+        if [[ ! -f "$expanded_file" ]]; then
+            echo "Error: Target file $file does not exist. Cannot apply setting."
+            exit 1
+        fi
+
+        # Map standard true/false CLI inputs to custom toggle values if defined
+        if [[ "$type" == "toggle" ]]; then
+            if [[ "$DIRECT_VALUE" == "true" ]]; then
+                DIRECT_VALUE="$true_value"
+            elif [[ "$DIRECT_VALUE" == "false" ]]; then
+                DIRECT_VALUE="$false_value"
+            fi
+        fi
+
         apply_setting "$file" "$mode" "$match" "$checkpoint" "$DIRECT_VALUE"
+        
+        # Execute post_command in the background if it exists
+        if [[ -n "$post_command" && $DRY_RUN -eq 0 ]]; then
+            eval "$post_command &"
+        elif [[ -n "$post_command" && $DRY_RUN -eq 1 ]]; then
+            echo -e "\n[TEST MODE] Would execute post_command: $post_command\n"
+        fi
+        
         echo "Successfully updated $DIRECT_ID."
         exit 0
     elif [[ "$ACTION" == "get" ]]; then
         # Output raw value with absolutely no formatting
         current_val=$(get_current_value "$file" "$mode" "$match" "$checkpoint" "$default")
-        echo -n "$current_val"
+        
+        exact_val="$current_val"
+        if [[ "$match" == *".*"* ]]; then
+            prefix="${match%%\.\**}"
+            suffix="${match#*\.\*}"
+            exact_val="${exact_val#"$prefix"}"
+            exact_val="${exact_val%"$suffix"}"
+        fi
+        
+        echo -n "$exact_val"
         exit 0
     fi
 fi
@@ -188,6 +226,11 @@ while true; do
         checkpoint=$(echo "$item_json" | jq -r '.checkpoint // ""')
         default=$(echo "$item_json" | jq -r '.default // ""')
         folder=$(echo "$item_json" | jq -r '.folder // ""')
+        post_command=$(echo "$item_json" | jq -r '.post_command // ""')
+        
+        # Safely fetch true/false values, defaulting to "true" and "false"
+        true_value=$(echo "$item_json" | jq -r 'if has("true_value") then .true_value else "true" end')
+        false_value=$(echo "$item_json" | jq -r 'if has("false_value") then .false_value else "false" end')
 
         # Standardize checkpoint mode
         if [[ -n "$checkpoint" && "$mode" == "replace" ]]; then
@@ -195,6 +238,16 @@ while true; do
         fi
 
         current_val=$(get_current_value "$file" "$mode" "$match" "$checkpoint" "$default")
+        expanded_file=$(expand_path "$file")
+
+        # Dynamically extract exact value by stripping the literal match prefix and suffix
+        exact_val="$current_val"
+        if [[ "$match" == *".*"* ]]; then
+            prefix="${match%%\.\**}"
+            suffix="${match#*\.\*}"
+            exact_val="${exact_val#"$prefix"}"
+            exact_val="${exact_val%"$suffix"}"
+        fi
 
         # Display Setting Info
         echo ""
@@ -202,7 +255,13 @@ while true; do
         gum style --foreground 250 "$instructions"
         gum style --foreground 240 "Mode: $mode | Type: $type"
         gum style --foreground 240 "Target: $file"
-        gum style --foreground 39 "Current value string:"
+        
+        # Display warning if target file doesn't exist
+        if [[ ! -f "$expanded_file" ]]; then
+            gum style --foreground 196 "⚠ Target file does not exist!"
+        fi
+
+        gum style --foreground 39 "Current value in file:"
         gum style --foreground 230 --padding "0 2" "$current_val"
         echo ""
 
@@ -211,14 +270,20 @@ while true; do
         if [[ "$type" == "toggle" ]]; then
             toggle_ans=$(gum choose "Yes" "No")
             if [[ "$toggle_ans" == "Yes" ]]; then
-                new_value="true"
+                new_value="$true_value"
             elif [[ "$toggle_ans" == "No" ]]; then
-                new_value="false"
+                new_value="$false_value"
             fi
         elif [[ "$type" == "textfield" ]]; then
-            new_value=$(gum input --placeholder "Default: $default")
+            # Pre-fill textfield with exact_val using the --value flag
+            new_value=$(gum input --placeholder "Default: $default" --value "$exact_val")
         elif [[ "$type" == "choose" ]]; then
-            new_value=$(echo "$item_json" | jq -r '.options[]' | gum choose)
+            options=$(echo "$item_json" | jq -r '.options[]')
+            # If the exact value exists in options, bump it to the very top to pre-select it
+            if echo "$options" | grep -Fqx "$exact_val"; then
+                options=$(echo -e "$exact_val\n$(echo "$options" | grep -Fvx "$exact_val")")
+            fi
+            new_value=$(echo "$options" | gum choose)
         elif [[ "$type" == "files" ]]; then
             if [[ -n "$folder" ]]; then
                 expanded_folder=$(expand_path "$folder")
@@ -226,6 +291,10 @@ while true; do
                     # List files, exclude directories
                     items=$(ls -1p "$expanded_folder" | grep -v /)
                     if [[ -n "$items" ]]; then
+                        # Bump exact match to the top
+                        if echo "$items" | grep -Fqx "$exact_val"; then
+                            items=$(echo -e "$exact_val\n$(echo "$items" | grep -Fvx "$exact_val")")
+                        fi
                         new_value=$(echo "$items" | gum choose)
                     else
                         gum style --foreground 196 "No files found in $expanded_folder"
@@ -246,6 +315,10 @@ while true; do
                     # List directories, remove trailing slash
                     items=$(ls -1p "$expanded_folder" | grep / | sed 's|/$||')
                     if [[ -n "$items" ]]; then
+                        # Bump exact match to the top
+                        if echo "$items" | grep -Fqx "$exact_val"; then
+                            items=$(echo -e "$exact_val\n$(echo "$items" | grep -Fvx "$exact_val")")
+                        fi
                         new_value=$(echo "$items" | gum choose)
                     else
                         gum style --foreground 196 "No folders found in $expanded_folder"
@@ -263,11 +336,26 @@ while true; do
 
         # Apply changes if the user provided input
         if [[ -n "$new_value" ]]; then
-            apply_setting "$file" "$mode" "$match" "$checkpoint" "$new_value"
-            if [[ $DRY_RUN -eq 0 ]]; then
-                gum style --foreground 82 "✓ Successfully set to: $new_value"
+            if [[ ! -f "$expanded_file" ]]; then
+                gum style --foreground 196 "✗ Cannot apply setting: File does not exist."
+                sleep 2
+            else
+                apply_setting "$file" "$mode" "$match" "$checkpoint" "$new_value"
+                
+                if [[ $DRY_RUN -eq 0 ]]; then
+                    gum style --foreground 82 "✓ Successfully set to: $new_value"
+                    
+                    # Execute post_command in the background if it exists
+                    if [[ -n "$post_command" ]]; then
+                        eval "$post_command &"
+                    fi
+                else
+                    if [[ -n "$post_command" ]]; then
+                        echo -e "\n[TEST MODE] Would execute post_command: $post_command\n"
+                    fi
+                fi
+                sleep 1.5
             fi
-            sleep 1.5
         fi
     done
 done

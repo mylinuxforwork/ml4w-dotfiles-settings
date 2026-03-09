@@ -5,10 +5,12 @@ A powerful, interactive Bash utility to manage and toggle dotfile configurations
 ## ✨ Features
 
 * **Interactive UI**: Navigate through configuration groups and settings using a sleek terminal interface.
+* **Smart Pre-selection**: Automatically detects your current configuration and pre-fills text fields or highlights the active option in menus.
 * **Direct CLI Manipulation**: Quickly `get` or `set` values directly from the command line for easy integration into other scripts or keybindings.
+* **Dynamic File/Folder Selection**: Automatically reads directories to populate selection menus with available files or folders.
+* **Post-Execution Commands**: Run background commands (like restarting Waybar or Hyprland) automatically after a setting is changed.
+* **Safe Execution**: Warns you in the UI if a target configuration file doesn't exist yet and prevents accidental ghost-file creation.
 * **Smart Replacements**: Supports complete file overwriting, regex-based string replacement, and targeted replacements after specific checkpoints in a file.
-* **Dynamic File/Folder Selection**: Automatically read directories to populate selection menus with available files or folders.
-* **Test Mode**: Run the script in a dry-run mode (`--test`) to see exactly what changes would be made without modifying any files.
 * **Profile Support**: Keep multiple configuration profiles isolated in parallel.
 
 ## 📦 Prerequisites
@@ -76,23 +78,27 @@ The UI and logic are entirely driven by a `settings.json` file located in your p
         "description": "General desktop environment settings",
         "settings": [
             {
-                "name": "Toggle Dock",
-                "id": "toggle_dock",
-                "instructions": "Do you want to enable or disable the dock?",
-                "file": "~/.config/ml4w/settings/dock",
+                "name": "Show App Menu",
+                "id": "show_app_menu",
+                "instructions": "Do you want to show the app menu in the status bar?",
+                "file": "~/.config/waybar/config",
                 "type": "toggle",
-                "mode": "overwrite",
-                "default": "true"
+                "mode": "replace",
+                "match": ".*\"wlr/taskbar\"",
+                "default": "    ",
+                "true_value": "    ",
+                "false_value": "    //",
+                "post_command": "killall waybar; waybar > /dev/null 2>&1 &"
             },
             {
-                "name": "Select Decoration Variant",
-                "id": "variant_decoration",
-                "instructions": "Choose your preferred variant:",
-                "folder": "~/.config/hypr/conf/decorations",
-                "file": "~/.config/hypr/conf/decorations.conf",
+                "name": "Select Animation",
+                "id": "variant_animation",
+                "instructions": "Choose your preferred animation variant:",
+                "folder": "~/.config/hypr/conf/animations",
+                "file": "~/.config/hypr/conf/animations.conf",
                 "type": "files",
                 "mode": "replace",
-                "match": "source = ~/.config/hypr/conf/decorations/.*",
+                "match": "source = ~/.config/hypr/conf/animations/.*",
                 "default": "default.conf"
             },
             {
@@ -103,7 +109,8 @@ The UI and logic are entirely driven by a `settings.json` file located in your p
                 "file": "~/.config/ml4w/settings/waybar_theme",
                 "type": "folders",
                 "mode": "overwrite",
-                "default": "glass-theme"
+                "default": "glass-theme",
+                "post_command": "~/.config/waybar/launch.sh > /dev/null 2>&1 &"
             }
         ]
     },
@@ -140,8 +147,12 @@ The UI and logic are entirely driven by a `settings.json` file located in your p
 
 ### 🎛️ Setting Types
 
-* `toggle`: Prompts the user with a Yes/No choice (maps to `true`/`false`).
-* `textfield`: Prompts the user to type a string.
+* `toggle`: Prompts the user with a Yes/No choice.
+* Defaults to writing `"true"` or `"false"`.
+* *Optional:* You can map Yes/No to custom strings by providing `"true_value"` and `"false_value"` keys.
+
+
+* `textfield`: Prompts the user to type a string. It will pre-fill with the currently active value if one is detected.
 * `choose`: Prompts the user to select from an array provided in the `"options"` key.
 * `files`: Dynamically reads and lists all files from a specified directory. **Requires the `"folder"` key in the JSON object** to define where to look.
 * `folders`: Dynamically reads and lists all subdirectories from a specified directory. **Requires the `"folder"` key in the JSON object** to define where to look.
@@ -149,5 +160,10 @@ The UI and logic are entirely driven by a `settings.json` file located in your p
 ### 📝 Operation Modes
 
 * `overwrite`: Completely replaces the contents of the target file with the new value.
-* `replace`: Searches for the `"match"` string (as a regular expression) and replaces the wildcard `.*` with the new value.
+* `replace`: Searches for the `"match"` string (as a regular expression) and replaces the wildcard `.*` with the new value. (e.g., `size = .*` becomes `size = 14`).
 * **replace with checkpoint**: If a `"checkpoint"` string is provided alongside `"mode": "replace"`, the script will first locate the checkpoint line, and *then* replace the very next occurrence of the `"match"` string.
+
+### ⚡ Additional Keys
+
+* `post_command`: An optional shell command to execute in the background after successfully applying a setting (e.g., `"killall waybar; waybar > /dev/null 2>&1 &"`).
+* `folder`: The target directory path required when using `files` or `folders` types.
