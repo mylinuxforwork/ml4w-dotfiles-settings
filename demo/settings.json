@@ -10,6 +10,25 @@
             "type": "toggle",
             "mode": "overwrite",
             "default": "true"
+        },{
+            "name": "Select Decoration Variant",
+            "id": "variant_decoration",
+            "instructions": "Choose your preferred variant:",
+            "file": "~/.config/hypr/conf/decorations.conf",
+            "type": "files",
+            "folder": "~/.config/hypr/conf/decorations",
+            "mode": "replace",
+            "match": "source = ~/.config/hypr/conf/decorations/.*",
+            "default": "default.conf"
+        },{
+            "name": "Select Waybar Theme",
+            "id": "theme_folder",
+            "instructions": "Choose your theme folder:",
+            "file": "~/.config/ml4w/settings/waybar_theme",
+            "type": "folders",
+            "folder": "~/.config/waybar/themes",
+            "mode": "overwrite",
+            "default": "glass-theme"
         }]
     },
     {

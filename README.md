@@ -5,8 +5,9 @@ A powerful, interactive Bash utility to manage and toggle dotfile configurations
 ## ✨ Features
 
 * **Interactive UI**: Navigate through configuration groups and settings using a sleek terminal interface.
-* **Direct CLI Manipulation**: Set values directly from the command line for easy integration into other scripts or keybindings.
+* **Direct CLI Manipulation**: Quickly `get` or `set` values directly from the command line for easy integration into other scripts or keybindings.
 * **Smart Replacements**: Supports complete file overwriting, regex-based string replacement, and targeted replacements after specific checkpoints in a file.
+* **Dynamic File/Folder Selection**: Automatically read directories to populate selection menus with available files or folders.
 * **Test Mode**: Run the script in a dry-run mode (`--test`) to see exactly what changes would be made without modifying any files.
 * **Profile Support**: Keep multiple configuration profiles isolated in parallel.
 
@@ -52,7 +53,10 @@ ml4w-dotfiles-settings --create myprofile
 ml4w-dotfiles-settings --test myprofile
 
 # Set a value directly via CLI (bypasses the UI)
-ml4w-dotfiles-settings --id toggle_dock --value false
+ml4w-dotfiles-settings --set --id toggle_dock --value false myprofile
+
+# Get a current value directly via CLI (Outputs raw string, perfect for piping/variables)
+ml4w-dotfiles-settings --get --id toggle_dock myprofile
 
 # Show help menu
 ml4w-dotfiles-settings --help
@@ -79,6 +83,27 @@ The UI and logic are entirely driven by a `settings.json` file located in your p
                 "type": "toggle",
                 "mode": "overwrite",
                 "default": "true"
+            },
+            {
+                "name": "Select Decoration Variant",
+                "id": "variant_decoration",
+                "instructions": "Choose your preferred variant:",
+                "folder": "~/.config/hypr/conf/decorations",
+                "file": "~/.config/hypr/conf/decorations.conf",
+                "type": "files",
+                "mode": "replace",
+                "match": "source = ~/.config/hypr/conf/decorations/.*",
+                "default": "default.conf"
+            },
+            {
+                "name": "Select Waybar Theme",
+                "id": "theme_folder",
+                "instructions": "Choose your theme folder:",
+                "folder": "~/.config/ml4w/settings/waybar_themes",
+                "file": "~/.config/ml4w/settings/waybar_theme",
+                "type": "folders",
+                "mode": "overwrite",
+                "default": "glass-theme"
             }
         ]
     },
@@ -106,16 +131,6 @@ The UI and logic are entirely driven by a `settings.json` file located in your p
                 "match": "fontcolor = .*",
                 "default": "#FFFFFF",
                 "checkpoint": "#Comment"
-            },
-            {
-                "name": "Select Theme",
-                "id": "theme_select",
-                "instructions": "Choose your preferred system theme:",
-                "file": "~/.config/ml4w/settings/theme",
-                "type": "choose",
-                "mode": "overwrite",
-                "options": ["Light", "Dark", "Dracula"],
-                "default": "Dark"
             }
         ]
     }
@@ -128,6 +143,8 @@ The UI and logic are entirely driven by a `settings.json` file located in your p
 * `toggle`: Prompts the user with a Yes/No choice (maps to `true`/`false`).
 * `textfield`: Prompts the user to type a string.
 * `choose`: Prompts the user to select from an array provided in the `"options"` key.
+* `files`: Dynamically reads and lists all files from a specified directory. **Requires the `"folder"` key in the JSON object** to define where to look.
+* `folders`: Dynamically reads and lists all subdirectories from a specified directory. **Requires the `"folder"` key in the JSON object** to define where to look.
 
 ### 📝 Operation Modes
 

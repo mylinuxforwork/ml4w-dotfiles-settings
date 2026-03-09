@@ -11,6 +11,7 @@ PROFILE=""
 DIRECT_ID=""
 DIRECT_VALUE=""
 CREATE_PROFILE=""
+ACTION="menu" # default action
 
 # Source utils
 if [[ -f "$LIB_FILE" ]]; then
@@ -26,20 +27,29 @@ while [[ $# -gt 0 ]]; do
         --help)
             echo "Usage: ml4w-dotfiles-settings [OPTIONS] [PROFILE]"
             echo "Options:"
-            echo "  --test <profile>                 Start script in test mode (no files modified)"
-            echo "  --create <profile>               Create a profile with the demo setup"
-            echo "  --id <id> --value <value>        Set a value directly for an ID"
-            echo "  --help                           Show this help message"
+            echo "  --test <profile>                           Start script in test mode (no files modified)"
+            echo "  --create <profile>                         Create a profile with the demo setup"
+            echo "  --set --id <id> --value <value> [profile]  Set a value directly for an ID"
+            echo "  --get --id <id> [profile]                  Get the current value for an ID"
+            echo "  --help                                     Show this help message"
             exit 0
             ;;
         --test)
             DRY_RUN=1
-            PROFILE="$2"
-            shift 2
+            shift
             ;;
         --create)
+            ACTION="create"
             CREATE_PROFILE="$2"
             shift 2
+            ;;
+        --set)
+            ACTION="set"
+            shift
+            ;;
+        --get)
+            ACTION="get"
+            shift
             ;;
         --id)
             DIRECT_ID="$2"
@@ -68,14 +78,18 @@ fi
 mkdir -p "$CONFIG_DIR"
 
 # Handle --create
-if [[ -n "$CREATE_PROFILE" ]]; then
+if [[ "$ACTION" == "create" ]]; then
+    if [[ -z "$CREATE_PROFILE" ]]; then
+        echo "Error: Profile name required for --create."
+        exit 1
+    fi
     mkdir -p "$CONFIG_DIR/$CREATE_PROFILE"
     cp "$DEMO_FILE" "$CONFIG_DIR/$CREATE_PROFILE/settings.json"
     echo "Profile '$CREATE_PROFILE' successfully created."
     exit 0
 fi
 
-# Validate Profile
+# Validate Profile for Menu, Set, and Get actions
 if [[ -z "$PROFILE" ]]; then
     echo "Error: Profile not specified. Use --help for usage."
     exit 1
@@ -89,28 +103,45 @@ if [[ ! -d "$PROFILE_DIR" || ! -f "$SETTINGS_FILE" ]]; then
     exit 1
 fi
 
-# Handle Direct ID/Value Insertion (Updated for nested JSON and checkpoints)
-if [[ -n "$DIRECT_ID" && -n "$DIRECT_VALUE" ]]; then
-    # Flatten settings arrays from all groups to find the specific ID
+# Handle Direct CLI Actions (--set and --get)
+if [[ "$ACTION" == "set" || "$ACTION" == "get" ]]; then
+    if [[ -z "$DIRECT_ID" ]]; then
+        echo "Error: --id is required for --set and --get."
+        exit 1
+    fi
+
     item_json=$(jq -r --arg id "$DIRECT_ID" 'map(.settings) | flatten | .[] | select(.id == $id)' "$SETTINGS_FILE")
     
     if [[ -z "$item_json" ]]; then
         echo "Error: ID '$DIRECT_ID' not found in settings.json"
         exit 1
     fi
+    
     file=$(echo "$item_json" | jq -r '.file')
     mode=$(echo "$item_json" | jq -r '.mode')
     match=$(echo "$item_json" | jq -r '.match // ""')
     checkpoint=$(echo "$item_json" | jq -r '.checkpoint // ""')
+    default=$(echo "$item_json" | jq -r '.default // ""')
     
-    # Standardize checkpoint mode for direct injection
+    # Standardize checkpoint mode for direct operations
     if [[ -n "$checkpoint" && "$mode" == "replace" ]]; then
         mode="replace with checkpoint"
     fi
 
-    apply_setting "$file" "$mode" "$match" "$checkpoint" "$DIRECT_VALUE"
-    echo "Successfully updated $DIRECT_ID."
-    exit 0
+    if [[ "$ACTION" == "set" ]]; then
+        if [[ -z "$DIRECT_VALUE" ]]; then
+            echo "Error: --value is required for --set."
+            exit 1
+        fi
+        apply_setting "$file" "$mode" "$match" "$checkpoint" "$DIRECT_VALUE"
+        echo "Successfully updated $DIRECT_ID."
+        exit 0
+    elif [[ "$ACTION" == "get" ]]; then
+        # Output raw value with absolutely no formatting
+        current_val=$(get_current_value "$file" "$mode" "$match" "$checkpoint" "$default")
+        echo -n "$current_val"
+        exit 0
+    fi
 fi
 
 # Main Gum UI Loop (Groups)
@@ -156,6 +187,7 @@ while true; do
         match=$(echo "$item_json" | jq -r '.match // ""')
         checkpoint=$(echo "$item_json" | jq -r '.checkpoint // ""')
         default=$(echo "$item_json" | jq -r '.default // ""')
+        folder=$(echo "$item_json" | jq -r '.folder // ""')
 
         # Standardize checkpoint mode
         if [[ -n "$checkpoint" && "$mode" == "replace" ]]; then
@@ -186,8 +218,47 @@ while true; do
         elif [[ "$type" == "textfield" ]]; then
             new_value=$(gum input --placeholder "Default: $default")
         elif [[ "$type" == "choose" ]]; then
-            # Parse choices into Gum
             new_value=$(echo "$item_json" | jq -r '.options[]' | gum choose)
+        elif [[ "$type" == "files" ]]; then
+            if [[ -n "$folder" ]]; then
+                expanded_folder=$(expand_path "$folder")
+                if [[ -d "$expanded_folder" ]]; then
+                    # List files, exclude directories
+                    items=$(ls -1p "$expanded_folder" | grep -v /)
+                    if [[ -n "$items" ]]; then
+                        new_value=$(echo "$items" | gum choose)
+                    else
+                        gum style --foreground 196 "No files found in $expanded_folder"
+                        sleep 2
+                    fi
+                else
+                    gum style --foreground 196 "Directory not found: $expanded_folder"
+                    sleep 2
+                fi
+            else
+                gum style --foreground 196 "Error: 'folder' key missing in settings.json"
+                sleep 2
+            fi
+        elif [[ "$type" == "folders" ]]; then
+            if [[ -n "$folder" ]]; then
+                expanded_folder=$(expand_path "$folder")
+                if [[ -d "$expanded_folder" ]]; then
+                    # List directories, remove trailing slash
+                    items=$(ls -1p "$expanded_folder" | grep / | sed 's|/$||')
+                    if [[ -n "$items" ]]; then
+                        new_value=$(echo "$items" | gum choose)
+                    else
+                        gum style --foreground 196 "No folders found in $expanded_folder"
+                        sleep 2
+                    fi
+                else
+                    gum style --foreground 196 "Directory not found: $expanded_folder"
+                    sleep 2
+                fi
+            else
+                gum style --foreground 196 "Error: 'folder' key missing in settings.json"
+                sleep 2
+            fi
         fi
 
         # Apply changes if the user provided input
