@@ -24,20 +24,24 @@ Ensure you have the following installed on your system:
 
 ## 🚀 Installation
 
-Clone the repository and install it globally using `make`:
+Clone the repository and install it globally using `make` (all distros):
 
 ```bash
 git clone https://github.com/yourusername/ml4w-dotfiles-settings.git
 cd ml4w-dotfiles-settings
 sudo make install
+```
 
+Or copy the following command into your terminal to install all dependencies and the ML4W Dotfiles Settings in one step (supporting Arch, Fedora & openSuse Tumbleweed):
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/mylinuxforwork/ml4w-dotfiles-settings/main/setup.sh)
 ```
 
 To uninstall:
 
 ```bash
 sudo make uninstall
-
 ```
 
 ## 🛠️ Usage
