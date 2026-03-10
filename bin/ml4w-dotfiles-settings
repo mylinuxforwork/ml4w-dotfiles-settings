@@ -1,9 +1,19 @@
 #!/usr/bin/env bash
 
 # Paths and variables
+DEV_DIR="/ml4w-dotfiles-settings/bin"
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+if [[ "$SCRIPT_DIR" == *"$DEV_DIR"* ]]; then
+    LIB_DIR="$HOME/Projects/ml4w-dotfiles-settings/lib"
+    echo
+    echo ":: Running in dev environment"
+else
+    LIB_DIR="$HOME/.local/share/ml4w-dotfiles-settings"
+fi
+
 CONFIG_DIR="$HOME/.config/ml4w-dotfiles-settings"
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LIB_FILE="$APP_DIR/lib/utils.sh"
+LIB_FILE="$LIB_DIR/utils.sh"
 DEMO_FILE="$APP_DIR/demo/settings.json"
 
 DRY_RUN=0

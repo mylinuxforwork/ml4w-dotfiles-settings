@@ -2,8 +2,6 @@
 BIN_DIR = $(HOME)/.local/bin
 LIB_DIR = $(HOME)/.local/share/ml4w-dotfiles-settings
 
-.PHONY: install uninstall test
-
 install:
 	@echo "Installing ml4w-dotfiles-settings..."
 	mkdir -p $(BIN_DIR)
@@ -20,6 +18,3 @@ uninstall:
 	rm -f $(BIN_DIR)/ml4w-dotfiles-settings
 	rm -rf $(LIB_DIR)
 	@echo "Removed ml4w-dotfiles-settings."
-
-test:
-	bats tests/
