@@ -4,7 +4,6 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import "../shared"
-// import Quickshell.env("HOME") + "/.local/share/ml4w-dotfiles-settings/quickshell/shared"
 
 FloatingWindow {
     id: root
@@ -20,7 +19,6 @@ FloatingWindow {
         }
     }
 
-    // Back to the clean, hot-reloading instance!
     Theme { 
         id: theme 
     }
