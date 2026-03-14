@@ -7,11 +7,11 @@ install:
 	mkdir -p $(BIN_DIR)
 	mkdir -p $(LIB_DIR)
 	
-	# Install binary (executable)
+	@echo "Installing binary..."
 	install -m 755 bin/ml4w-dotfiles-settings $(BIN_DIR)/
 	
-	# Install libraries (read-only)
-	install -m 644 lib/*.sh $(LIB_DIR)/
+	@echo "Installing libraries..."
+	cp -r lib/* $(LIB_DIR)/
 	@echo "Done! Make sure $(BIN_DIR) is in your PATH."
 
 uninstall:

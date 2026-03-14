@@ -171,3 +171,17 @@ The UI and logic are entirely driven by a `settings.json` file located in your p
 
 * `post_command`: An optional shell command to execute in the background after successfully applying a setting (e.g., `"killall waybar; waybar > /dev/null 2>&1 &"`).
 * `folder`: The target directory path required when using `files` or `folders` types.
+
+## ✨ Quickshell UI
+
+The ML4W Dotfiles Settings with Quickshell based UI
+
+```
+PROFILE="com.ml4w.dotfiles" qs -p .  
+```
+
+### Using a dynamic theme
+```
+rm $HOME/.local/share/ml4w-dotfiles-settings/quickshell/shared/Theme.qml  
+ln -sf $HOME/.config/quickshell/shared/Theme.qml $HOME/.local/share/ml4w-dotfiles-settings/quickshell/shared/Theme.qml
+```
