@@ -174,10 +174,16 @@ The UI and logic are entirely driven by a `settings.json` file located in your p
 
 ## ✨ Quickshell UI
 
-The ML4W Dotfiles Settings with Quickshell based UI
+The ML4W Dotfiles Settings is shoipped with a Quickshell (https://quickshell.org/) based UI.
 
 ```
-PROFILE="com.ml4w.dotfiles" qs -p .  
+# Start Quickshell environment
+PROFILE="com.ml4w.dotfiles" qs -p $HOME/.local/share/ml4w-dotfiles-settings/quickshell &
+```
+
+## Toggle Settings Window
+```
+qs -p $HOME/.local/share/ml4w-dotfiles-settings/quickshell ipc call settings toggle  
 ```
 
 ### Using a dynamic theme

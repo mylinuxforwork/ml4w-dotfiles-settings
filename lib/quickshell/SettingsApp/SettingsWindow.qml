@@ -3,11 +3,11 @@ import Quickshell.Io
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
-import "../shared"
+import qs.shared
 
 FloatingWindow {
     id: root
-    visible: true
+    visible: false
     title: "ML4W Dotfiles Settings"
     implicitWidth: 900
     implicitHeight: 600
@@ -40,8 +40,7 @@ FloatingWindow {
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
-                var rawOutput = this.text.trim(); 
-                
+                var rawOutput = this.text.trim();
                 if (rawOutput === "" || rawOutput.startsWith("cat: ")) {
                     console.log("ERROR: Bash could not find or load the settings.json file.");
                     return;
@@ -134,8 +133,26 @@ FloatingWindow {
                     spacing: 15
                     model: root.settingsData[root.selectedGroupIndex] ? root.settingsData[root.selectedGroupIndex].settings : []
 
+                    // --- ADDED: INTERACTIVE STYLED SCROLLBAR ---
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AsNeeded
+                        interactive: true // Ensures you can grab and drag it with the mouse
+                        
+                        // Custom styling to match your dark theme
+                        contentItem: Rectangle {
+                            implicitWidth: 6
+                            implicitHeight: 100
+                            radius: 3
+                            color: theme.primary
+                            // Dims slightly when not interacting with it
+                            opacity: parent.pressed ? 1.0 : (parent.active ? 0.8 : 0.4)
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                        }
+                    }
+
                     delegate: Rectangle {
-                        implicitWidth: ListView.view.width
+                        // --- ADDED: Margin space for the right-side scrollbar ---
+                        width: ListView.view.width - 16
                         implicitHeight: 90
                         color: theme.background
                         radius: 10
@@ -234,7 +251,6 @@ FloatingWindow {
                                         text: fieldItem.exactVal
                                         clip: true
 
-    
                                         Text {
                                             anchors.fill: parent
                                             verticalAlignment: Text.AlignVCenter
@@ -255,7 +271,8 @@ FloatingWindow {
 
                                 // B. TOGGLE (Switch)
                                 Switch {
-                                    anchors.centerIn: parent
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
                                     visible: modelData.type === "toggle"
 
                                     checked: {
@@ -273,8 +290,6 @@ FloatingWindow {
                                         border.width: 1
 
                                         anchors.verticalCenter: parent.verticalCenter
-                                        anchors.right: parent.right
-                                        anchors.rightMargin: 20
 
                                         Rectangle {
                                             x: parent.parent.checked ? parent.width - width - 2 : 2
