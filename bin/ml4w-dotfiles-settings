@@ -168,7 +168,9 @@ if [[ "$ACTION" == "set" || "$ACTION" == "get" ]]; then
         
         # Execute post_command in the background if it exists
         if [[ -n "$post_command" && $DRY_RUN -eq 0 ]]; then
-            eval "$post_command &"
+            # eval "$post_command &"
+            nohup bash -c "$post_command" > /dev/null 2>&1 &
+            disown
         elif [[ -n "$post_command" && $DRY_RUN -eq 1 ]]; then
             echo -e "\n[TEST MODE] Would execute post_command: $post_command\n"
         fi

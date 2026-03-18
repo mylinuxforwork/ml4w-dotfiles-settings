@@ -22,7 +22,7 @@ FloatingWindow {
     Theme { 
         id: theme 
     }
-    
+
     // Load the Settings profile
     property string profile: Quickshell.env("PROFILE")
 
