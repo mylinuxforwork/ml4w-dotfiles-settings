@@ -3,7 +3,7 @@ import Quickshell.Io
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
-import qs.shared
+import qs.CustomTheme
 
 FloatingWindow {
     id: root
@@ -19,14 +19,10 @@ FloatingWindow {
         }
     }
 
-    Theme { 
-        id: theme 
-    }
-
     // Load the Settings profile
     property string profile: Quickshell.env("PROFILE")
 
-    color: theme.background 
+    color: Theme.background 
 
     // Absolute path to your script to prevent system PATH issues
     property string scriptPath: Quickshell.env("HOME") + "/.local/bin/ml4w-dotfiles-settings"
@@ -65,7 +61,7 @@ FloatingWindow {
         Rectangle {
             Layout.preferredWidth: 260
             Layout.fillHeight: true
-            color: theme.background
+            color: Theme.background
 
             ListView {
                 anchors.fill: parent
@@ -77,7 +73,7 @@ FloatingWindow {
                     implicitWidth: parent.width
                     implicitHeight: 50
                     radius: 10
-                    color: index === root.selectedGroupIndex ? theme.primary : "transparent"
+                    color: index === root.selectedGroupIndex ? Theme.primary : "transparent"
                     
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
@@ -85,8 +81,8 @@ FloatingWindow {
                         anchors.leftMargin: 15
                         text: modelData.group
                         font.pixelSize: 16
-                        font.family: theme.fontFamily
-                        color: index === root.selectedGroupIndex ? theme.on_primary : theme.primary
+                        font.family: Theme.fontFamily
+                        color: index === root.selectedGroupIndex ? Theme.on_primary : Theme.primary
                     }
                     
                     MouseArea {
@@ -103,7 +99,7 @@ FloatingWindow {
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: theme.background
+            color: Theme.background
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 40
@@ -113,16 +109,16 @@ FloatingWindow {
                     text: root.settingsData[root.selectedGroupIndex] ? root.settingsData[root.selectedGroupIndex].group : "Loading..."
                     font.pixelSize: 28
                     font.bold: true
-                    color: theme.on_background
-                    font.family: theme.fontFamily
+                    color: Theme.on_background
+                    font.family: Theme.fontFamily
                 }
 
                 Text {
                     text: root.settingsData[root.selectedGroupIndex] ? root.settingsData[root.selectedGroupIndex].description : ""
                     font.pixelSize: 14
-                    color: theme.on_background
+                    color: Theme.on_background
                     Layout.bottomMargin: 20
-                    font.family: theme.fontFamily
+                    font.family: Theme.fontFamily
                 }
 
                 // Settings Fields
@@ -143,7 +139,7 @@ FloatingWindow {
                             implicitWidth: 6
                             implicitHeight: 100
                             radius: 3
-                            color: theme.primary
+                            color: Theme.primary
                             // Dims slightly when not interacting with it
                             opacity: parent.pressed ? 1.0 : (parent.active ? 0.8 : 0.4)
                             Behavior on opacity { NumberAnimation { duration: 150 } }
@@ -154,9 +150,9 @@ FloatingWindow {
                         // --- ADDED: Margin space for the right-side scrollbar ---
                         width: ListView.view.width - 16
                         implicitHeight: 90
-                        color: theme.background
+                        color: Theme.background
                         radius: 10
-                        border.color: theme.primary
+                        border.color: Theme.primary
 
                         RowLayout {
                             anchors.fill: parent
@@ -169,16 +165,16 @@ FloatingWindow {
                                     text: modelData.name
                                     font.pixelSize: 16
                                     font.bold: true
-                                    color: theme.primary
-                                    font.family: theme.fontFamily
+                                    color: Theme.primary
+                                    font.family: Theme.fontFamily
                                 }
                                 Text {
                                     text: modelData.instructions
                                     font.pixelSize: 12
-                                    color: theme.primary
+                                    color: Theme.primary
                                     wrapMode: Text.WordWrap
                                     Layout.fillWidth: true
-                                    font.family: theme.fontFamily
+                                    font.family: Theme.fontFamily
                                 }
                             }
 
@@ -236,9 +232,9 @@ FloatingWindow {
                                 Rectangle {
                                     anchors.fill: parent
                                     visible: modelData.type === "textfield"
-                                    color: theme.background
+                                    color: Theme.background
                                     radius: 10
-                                    border.color: theme.primary
+                                    border.color: Theme.primary
                                     border.width: 1
 
                                     TextInput {
@@ -246,7 +242,7 @@ FloatingWindow {
                                         anchors.fill: parent
                                         anchors.margins: 10
                                         verticalAlignment: Text.AlignVCenter
-                                        color: theme.on_background
+                                        color: Theme.on_background
                                         font.pixelSize: 14
                                         text: fieldItem.exactVal
                                         clip: true
@@ -255,9 +251,9 @@ FloatingWindow {
                                             anchors.fill: parent
                                             verticalAlignment: Text.AlignVCenter
                                             text: "Enter value..."
-                                            color: theme.primary
+                                            color: Theme.primary
                                             visible: valInput.text === ""
-                                            font.family: theme.fontFamily
+                                            font.family: Theme.fontFamily
                                         }
 
                                         onAccepted: {
@@ -285,8 +281,8 @@ FloatingWindow {
                                         implicitWidth: 48
                                         implicitHeight: 26
                                         radius: 13
-                                        color: parent.checked ? theme.primary : theme.background
-                                        border.color: parent.checked ? theme.primary : theme.primary
+                                        color: parent.checked ? Theme.primary : Theme.background
+                                        border.color: parent.checked ? Theme.primary : Theme.primary
                                         border.width: 1
 
                                         anchors.verticalCenter: parent.verticalCenter
@@ -297,7 +293,7 @@ FloatingWindow {
                                             width: 22
                                             implicitHeight: 22
                                             radius: 11
-                                            color: parent.parent.checked ? theme.background : theme.on_primary
+                                            color: parent.parent.checked ? Theme.background : Theme.on_primary
                                             Behavior on x { NumberAnimation { duration: 150 } }
                                         }
                                     }
@@ -340,17 +336,17 @@ FloatingWindow {
 
                                     // Custom styling for the dropdown button
                                     background: Rectangle {
-                                        color: theme.background
-                                        border.color: theme.primary
+                                        color: Theme.background
+                                        border.color: Theme.primary
                                         radius: 10
                                     }
                                     contentItem: Text {
                                         text: combo.displayText
                                         font.pixelSize: 14
-                                        color: theme.primary
+                                        color: Theme.primary
                                         verticalAlignment: Text.AlignVCenter
                                         leftPadding: 10
-                                        font.family: theme.fontFamily
+                                        font.family: Theme.fontFamily
                                     }
 
                                     // Custom styling for the popup menu
@@ -367,8 +363,8 @@ FloatingWindow {
                                             ScrollIndicator.vertical: ScrollIndicator { }
                                         }
                                         background: Rectangle {
-                                            color: theme.background
-                                            border.color: theme.primary
+                                            color: Theme.background
+                                            border.color: Theme.primary
                                             radius: 10
                                         }
                                     }
@@ -376,12 +372,12 @@ FloatingWindow {
                                         implicitWidth: 204
                                         contentItem: Text {
                                             text: modelData
-                                            color: highlighted ? theme.on_primary : theme.primary
+                                            color: highlighted ? Theme.on_primary : Theme.primary
                                             font.pixelSize: 14
                                             verticalAlignment: Text.AlignVCenter
                                         }
                                         background: Rectangle {
-                                            color: highlighted ? theme.primary : "transparent"
+                                            color: highlighted ? Theme.primary : "transparent"
                                             radius:4
                                         }
                                         highlighted: combo.highlightedIndex === index

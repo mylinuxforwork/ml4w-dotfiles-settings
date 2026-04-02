@@ -186,8 +186,15 @@ PROFILE="com.ml4w.dotfiles" qs -p $HOME/.local/share/ml4w-dotfiles-settings/quic
 qs -p $HOME/.local/share/ml4w-dotfiles-settings/quickshell ipc call settings toggle  
 ```
 
-### Using a dynamic theme
+### Matugen Config
+
 ```
-rm $HOME/.local/share/ml4w-dotfiles-settings/quickshell/shared/Theme.qml  
-ln -sf $HOME/.config/quickshell/shared/Theme.qml $HOME/.local/share/ml4w-dotfiles-settings/quickshell/shared/Theme.qml
+[templates.ml4w_dotfiles_settings]
+input_path  = "./templates/colors.json"
+output_path = "~/.local/share/ml4w-dotfiles-settings/colors/colors.json"
+```
+
+### Reload Theme
+```
+qs -p $HOME/.local/share/ml4w-dotfiles-settings/quickshell ipc call theme-manager reload
 ```
