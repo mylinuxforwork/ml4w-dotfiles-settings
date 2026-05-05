@@ -52,6 +52,11 @@ apply_setting() {
         return 1
     fi
 
+    # Resolve symlink to real path if necessary
+    if [[ -L "$file" ]]; then
+        file=$(readlink -f "$file")
+    fi
+
     # Ensure the target directory exists just in case (for overwrites)
     if [[ $DRY_RUN -eq 0 ]]; then
         mkdir -p "$(dirname "$file")"
