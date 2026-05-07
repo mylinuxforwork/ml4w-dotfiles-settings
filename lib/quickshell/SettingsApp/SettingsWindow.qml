@@ -242,7 +242,7 @@ FloatingWindow {
                                         anchors.fill: parent
                                         anchors.margins: 10
                                         verticalAlignment: Text.AlignVCenter
-                                        color: Theme.on_background
+                                        color: Theme.primary
                                         font.pixelSize: 14
                                         text: fieldItem.exactVal
                                         clip: true
