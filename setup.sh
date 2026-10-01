@@ -31,8 +31,22 @@ elif command -v zypper &> /dev/null; then
     DISTRO="opensuse"
     info "openSUSE detected. Installing base dependencies..."
     sudo zypper install -y git make jq awk gum
+elif command -v apt &> /dev/null; then
+    DISTRO="ubuntu"
+    info "Ubuntu/Debian detected. Installing base dependencies..."
+    sudo apt update
+    sudo apt install -y git make jq gawk curl gpg
+    # gum is not in the default repos of older releases, use the Charm repo as fallback
+    if ! sudo apt install -y gum; then
+        info "Adding Charm repository for gum..."
+        sudo mkdir -p /etc/apt/keyrings
+        curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor --yes -o /etc/apt/keyrings/charm.gpg
+        echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | sudo tee /etc/apt/sources.list.d/charm.list > /dev/null
+        sudo apt update
+        sudo apt install -y gum
+    fi
 else
-    error "Unsupported distribution. Please install git, make, wak, gum, and jq manually."
+    error "Unsupported distribution. Please install git, make, awk, gum, and jq manually."
 fi
 
 # 2. Prepare Temporary Folder
